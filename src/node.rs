@@ -1,6 +1,8 @@
-use std::{borrow::BorrowMut, rc::{Rc, Weak}};
+use std::borrow::BorrowMut;
+use std::rc::{Rc, Weak};
+use std::cell::{RefCell};
 
-type NodeRef<T> = Option<Rc<Node<T>>>;
+type NodeRef<T> = Option<Rc<RefCell<Node<T>>>>;
 type WeakNodeRef<T> = Weak<Node<T>>;
 
 #[derive(Debug)]
@@ -21,18 +23,18 @@ impl<T> Node<T> where T : PartialOrd {
 
     
      fn left_insert(&mut self, val : T) {
-         if let Some(left) = self.left.as_mut()  {
+         if let Some(left) = self.left  {
              left.borrow_mut().insert(val);
          } else {
-             self.left = Some(Rc::new(Node::new(val)));
+             self.left = Some(Rc::new(RefCell::new(Node::new(val))));
          }
     }
 
     fn right_insert(&mut self, val : T) {
         if let Some(right) = self.right.as_mut()  {
-            right.insert(val);
+            right.get_mut().insert(val);
         } else {
-            self.right = Some(Rc::new(Node::new(val)));
+            self.right = Some(Rc::new(RefCell::new(Node::new(val))));
         }
     }
 
@@ -51,7 +53,7 @@ mod tree_test {
     use super::{Node};
     #[test]
     fn insert_right() {
-        let mut node = Node::new(6);
+        let node = Node::new(6);
         node.insert(8);
         assert_eq!(node.right.unwrap().value, 8);
     }
