@@ -1,9 +1,9 @@
 mod food;
-mod tree;
+mod node;
 
 use food::Food;
-use tree::Tree;
 use  rand::Rng; 
+use self::node::Node;
 
 fn main() {
     let foods = create_foods();
@@ -16,10 +16,10 @@ fn main() {
 
 
 fn create_tree(foods: &[Food])  {
-    let tree = Tree::new(foods[0].cost);
+   let root= Node::new(foods[0].cost);
 
     for food in &foods[1..] {
-      //  tree.
+        
     }
 }
 
