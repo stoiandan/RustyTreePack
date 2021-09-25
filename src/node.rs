@@ -1,79 +1,95 @@
-use std::rc::{Rc, Weak};
-use std::cell::{RefCell};
+use std::{ops::Index, result};
 
-type NodeRef<T> = Option<Rc<RefCell<Node<T>>>>;
-type WeakNodeRef<T> = Weak<RefCell<Node<T>>>;
 
-#[derive(Debug)]
-pub struct Node<T> where T : PartialOrd {
-     left   : NodeRef<T>,
-     right  : NodeRef<T>,
-     parent : WeakNodeRef<T>,
-    pub value  : T
+#[derive(Debug, Clone)] 
+struct NoNodeErr;
+
+
+type  Result<T> = result::Result<Option<T>, NoNodeErr>;
+
+pub struct Tree<T> where T : PartialOrd {
+    nodes: Vec<Option<T>>
 }
 
-impl<T> Node<T> where T : PartialOrd {
-    pub fn new(value : T) -> Self {
-        Node { left: None,
-               right: None,
-               parent: Weak::new(),
-               value }
-    }
-
+impl<T> Tree<T> where T : PartialOrd {
     
-     fn left_insert(&mut self, val : T) {
-         if let Some(left) = self.left.as_mut()  {
-             left.borrow_mut().insert(val);
-         } else {
-             let rc = &Rc::new(RefCell::new(Node::new(val)));
-             self.left = Some(rc.clone());
-             self.left.as_ref().unwrap().borrow_mut().parent  = Rc::downgrade(&rc.clone());
+    pub fn new() -> Self {
+            Tree {
+                nodes : Vec::new()
             }
     }
 
-    fn right_insert(&mut self, val : T) {
-        if let Some(right) = self.right.as_mut()  {
-            right.borrow_mut().insert(val);
+    pub fn insert_into(&mut self, val : T) {
+        self.insert(0, val);
+    }
+
+    fn insert(&mut self, idx: usize, val : T) {
+        match self.get_at(idx) {
+            Ok(None) =>  self.nodes[0] = Some(val),
+            Ok(Some(t)) => {
+                // insert to the left
+                if t >= &val {
+                    self.insert(idx*2, val)
+                } else { // insert to the right
+                    self.insert((idx*2)+1, val)
+                }
+            },
+            _ => self.nodes.push(Some(val))
+        };
+    }
+
+    fn insert_left(&mut self, val : T) {
+        self.nodes.push(Some(val));
+        self.nodes.push(None);
+    }
+
+    fn insert_right(&mut self, val : T) {
+        self.nodes.push(None);
+        self.nodes.push(Some(val));
+    }
+
+
+    fn get_left(&self, idx: usize) -> Result<&T> {
+        self.get_at(idx* 2)
+    }
+
+    fn get_right(&self, idx: usize) -> Result<&T> {
+        self.get_at((idx* 2) + 1)
+    }
+
+    fn get_at(&self, idx: usize) -> Result<&T> {
+        if idx >= self.nodes.len() {
+            Err(NoNodeErr)
         } else {
-            let rc = &Rc::new(RefCell::new(Node::new(val)));
-            self.right = Some(rc.clone());
-            self.right.as_ref().unwrap().borrow_mut().parent  = Rc::downgrade(&rc.clone());
+            Ok(self.nodes[idx].as_ref())
         }
     }
 
-    pub fn insert(&mut self, val : T) {
-        if self.value <= val {
-            self.right_insert(val)
-        } else {
-           self.left_insert(val);   
-        }
+    fn root(&self) -> Result<&T> {
+        self.get_at(0)
     }
 }
 
 
+impl<T> Index<usize> for Tree<T> where T : PartialOrd {
+    type Output = T;
+
+    fn index<'a>(&'a self, i: usize) -> &T {
+        self.nodes[i].as_ref().unwrap()
+    }
+}
+
+
+
 #[cfg(test)]
-mod tree_test {
-    use super::{Node};
-    use std::ptr;
+mod tests {
+    use  super::Tree;
     #[test]
-    fn insert_right() {
-        let mut node = Node::new(6);
-        node.insert(8);
-        assert_eq!(node.right.as_mut().unwrap().borrow_mut().value, 8);
-    }
+    fn insert_root() {
+        let mut tree = Tree::new();
 
-    #[test]
-    fn insert_left() {
-        let mut node = Node::new(6);
-        node.insert(3);
-        assert_eq!(node.left.as_mut().unwrap().borrow_mut().value, 3);
-    }
+        tree.insert_into(5);
 
-    #[test]
-    fn test_parent() {
-        let mut node = Node::new(5);
-        node.insert(6);
-        print!("{:p}\n{:p}",&node,&*node.right.as_ref().unwrap().borrow().parent.upgrade().as_ref().unwrap().borrow());
-        assert!(ptr::eq(&node,&*node.right.as_ref().unwrap().borrow().parent.upgrade().as_ref().unwrap().borrow()));
+        assert_eq!(tree[0],5)
     }
 }

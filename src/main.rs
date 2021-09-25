@@ -3,7 +3,6 @@ mod node;
 
 use food::Food;
 use  rand::Rng; 
-use self::node::Node;
 
 fn main() {
     let foods = create_foods();
@@ -14,14 +13,6 @@ fn main() {
     }
 }
 
-
-fn create_tree(foods: &[Food])  {
-   let root= Node::new(foods[0].cost);
-
-    for food in &foods[1..] {
-        
-    }
-}
 
 
 fn create_foods<'a>() -> [Food<'a>; 10] {
