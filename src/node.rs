@@ -1,137 +1,121 @@
-use std::fmt::{Debug, Display};
-use std::ops::Index;
-use std::result;
+use std::process::id;
 
-#[derive(Debug, Clone)]
-struct NoNodeErr;
+enum ChildType {
+    Left,
+    Right,
+}
 
-type Result<T> = result::Result<Option<T>, NoNodeErr>;
+struct Node<T>
+where
+    T: Ord,
+{
+    left: Option<usize>,
+    right: Option<usize>,
+    parent: Option<usize>,
+    value: T,
+}
+
+impl<T> Node<T>
+where
+    T: Ord,
+{
+    pub fn new(value: T) -> Self {
+        Node {
+            left: None,
+            right: None,
+            parent: None,
+            value,
+        }
+    }
+}
 
 pub struct Tree<T>
 where
-    T: PartialOrd,
-    T: Debug,
-    T: Display,
+    T: Ord,
 {
-    nodes: Vec<Option<T>>,
+    nodes: Vec<Node<T>>,
 }
 
 impl<T> Tree<T>
 where
-    T: PartialOrd,
-    T: Debug,
-    T: Display,
+    T: Ord,
 {
     pub fn new() -> Self {
         Tree { nodes: Vec::new() }
     }
 
-    pub fn insert_into(&mut self, val: T) {
-        self.insert(0, val);
+
+    pub fn insert(&mut self, val: T) {
+        self.insert_at(0, val);
     }
 
-    pub fn show_nodes(&self) {
-        for node in self.nodes.iter() {
-            match node {
-                Some(t) => println!("{} ", t),
-                None => println!("Empty cell "),
-            }
-        }
-    }
-
-    fn insert(&mut self, idx: usize, val: T) {
-        match self.get_at(idx) {
-            Ok(None) => self.nodes[idx] = Some(val),
-            Ok(Some(t)) => {
-                // insert to the left
-                if t >= &val {
-                    self.insert(((idx + 1) * 2) - 1, val)
-                } else {
-                    // insert to the right
-                    self.insert((idx + 1) * 2, val)
-                }
-            }
-            _ => {
+    fn insert_at(&mut self, idx: usize, val: T)  {
+            if self.nodes.len() <= idx {
                 if idx == 0 {
-                    self.nodes.push(Some(val));
-                    return;
+                    self.nodes.push(Node::new(val));
                 }
-                if idx % 2 == 1 {
-                    self.insert_left(val);
+                return;
+            }
+
+            let len = self.nodes.len();
+            let root = &mut self.nodes[idx];
+
+            // right insert
+            if val >= root.value {
+                if let Some(right) = root.right {
+                    self.insert_at(right, val);
                 } else {
-                    self.insert_right(val);
+                    let mut new_node = Node::new(val);
+
+                    new_node.parent = Some(idx);
+                    root.right = Some(len);
+                    self.nodes.push(new_node);
+                }
+            } else {
+                if let Some(left) = root.left {
+                    self.insert_at(left, val);
+                } else {
+                    let mut new_node = Node::new(val);
+
+                    new_node.parent = Some(idx);
+                    root.left = Some(len);
+                    self.nodes.push(new_node);
                 }
             }
-        };
     }
 
-    fn insert_left(&mut self, val: T) {
-        self.nodes.push(Some(val));
-        self.nodes.push(None);
+
+    pub fn find(&self, val: T) -> Option<&Node<T>> {
+        self.find_at(0, val)
     }
 
-    fn insert_right(&mut self, val: T) {
-        self.nodes.push(None);
-        self.nodes.push(Some(val));
-    }
-
-    fn get_left(&self, idx: usize) -> Result<&T> {
-        self.get_at(idx * 2)
-    }
-
-    fn get_right(&self, idx: usize) -> Result<&T> {
-        self.get_at((idx * 2) + 1)
-    }
-
-    fn get_at(&self, idx: usize) -> Result<&T> {
-        if idx >= self.nodes.len() {
-            Err(NoNodeErr)
-        } else {
-            Ok(self.nodes[idx].as_ref())
-        }
-    }
-
-    pub fn get_elem(&self, key: T) -> Option<&T> {
-        return match self.find(0, &key) {
-            Some(t) => self.nodes[t].as_ref(),
-            None => None,
-        };
-    }
-
-    fn find(&self, idx: usize, key: &T) -> Option<usize> {
-        match self.get_at(idx) {
-            Ok(Some(t)) => {
-                if t == key {
-                    return Some(idx);
+    fn find_at(&self, idx: usize, val: T) -> Option<&Node<T>> {
+                if self.nodes.len() <= idx {
+                    return None;
                 }
-                
-                if t >= key {
-                    return self.find(((idx + 1) * 2) - 1, key);
+
+                let root = &self.nodes[idx];
+
+                if root.value == val {
+                    return Some(root);
+                }
+
+                if root.value >= val {
+                    if let Some(left) = root.left {
+                        self.find_at(left, val)
+                    } else {
+                        return None
+                    }
                 } else {
-                    return self.find((idx + 1) * 2, key);
+                    if let Some(right) = root.right {
+                        self.find_at(right, val)
+                    } else {
+                        return None
+                    }
                 }
-            }
-            _ => None,
-        }
-    }
-
-    fn root(&self) -> Result<&T> {
-        self.get_at(0)
     }
 }
 
-impl<T> Index<usize> for Tree<T>
-where
-    T: PartialOrd,
-    T: Debug,
-    T: Display,
-{
-    type Output = T;
-
-    fn index<'a>(&'a self, i: usize) -> &T {
-        self.nodes[i].as_ref().unwrap()
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -140,42 +124,50 @@ mod tests {
     fn insert_root() {
         let mut tree = Tree::new();
 
-        tree.insert_into(5);
+        tree.insert(5);
 
-        assert_eq!(tree[0], 5)
+        assert_eq!(tree.find(5).unwrap().value, 5)
     }
 
     #[test]
     fn insert_left() {
         let mut tree = Tree::new();
 
-        tree.insert_into(5);
-        tree.insert_into(4);
+        tree.insert(5);
+        tree.insert(4);
 
-        assert_eq!(tree.get_elem(4).unwrap(), &4);
-        tree.show_nodes();
+       assert_eq!(tree.find(4).unwrap().value, 4);
     }
 
     #[test]
     fn insert_right() {
         let mut tree = Tree::new();
 
-        tree.insert_into(5);
-        tree.insert_into(7);
+        tree.insert(5);
+        tree.insert(7);
 
-        assert_eq!(tree.get_elem(7).unwrap(), &7);
-        tree.show_nodes();
+        assert_eq!(tree.find(7).unwrap().value,7);
     }
 
     #[test]
     fn insert_right_and_left() {
         let mut tree = Tree::new();
 
-        tree.insert_into(5);
-        tree.insert_into(7);
-        tree.insert_into(3);
+        tree.insert(5);
+        tree.insert(7);
+        tree.insert(3);
 
-        assert_eq!(tree.get_elem(3).unwrap(), &3);
-        tree.show_nodes();
+       assert_eq!(tree.find(3).unwrap().value,3);
+    }
+
+    #[test]
+    fn insert_depth_left() {
+        let mut tree = Tree::new();
+
+        tree.insert(7);
+        tree.insert(5);
+        tree.insert(3);
+
+       assert_eq!(tree.find(3).unwrap().value,3);
     }
 }
