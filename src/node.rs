@@ -59,27 +59,27 @@ where
         let len = self.nodes.len();
         let root = &mut self.nodes[idx];
 
-        // right insert
-        if val >= root.value {
-            if let Some(right) = root.right {
-                self.insert_at(right, val);
-            } else {
-                let mut new_node = Node::new(val);
-
-                new_node.parent = Some(idx);
-                root.right = Some(len);
-                self.nodes.push(new_node);
-            }
+        if let Some(child) = Self::child_to_travel(root, &val) {
+            self.insert_at(child, val);
         } else {
-            if let Some(left) = root.left {
-                self.insert_at(left, val);
+            if val >= root.value {
+                root.right = Some(len);
             } else {
-                let mut new_node = Node::new(val);
-
-                new_node.parent = Some(idx);
                 root.left = Some(len);
-                self.nodes.push(new_node);
             }
+            let mut new_node = Node::new(val);
+
+            new_node.parent = Some(idx);
+
+            self.nodes.push(new_node);
+        }
+    }
+
+    fn child_to_travel(root: &Node<T>, val: &T) -> Option<usize> {
+        if root.value >= *val {
+            root.left
+        } else {
+            root.right
         }
     }
 
