@@ -1,10 +1,3 @@
-use std::process::id;
-
-enum ChildType {
-    Left,
-    Right,
-}
-
 struct Node<T>
 where
     T: Ord,
@@ -98,18 +91,10 @@ where
             return Some(root);
         }
 
-        if root.value >= val {
-            if let Some(left) = root.left {
-                self.find_at(left, val)
-            } else {
-                return None;
-            }
+        if let Some(child) = Self::child_to_travel(root, &val) {
+            self.find_at(child, val)
         } else {
-            if let Some(right) = root.right {
-                self.find_at(right, val)
-            } else {
-                return None;
-            }
+            return None;
         }
     }
 }
@@ -164,7 +149,7 @@ mod tests {
         tree.insert(7);
         tree.insert(5);
         tree.insert(3);
-
-        assert_eq!(tree.find(3).unwrap().value, 3);
+        tree.insert(2);
+        assert_eq!(tree.find(2).unwrap().value, 2);
     }
 }
